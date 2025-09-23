@@ -10,6 +10,7 @@ import {
  * - Uses PUBLIC anon key; session persisted in the browser.
  * - This module never reads private env directly to avoid accidental secret exposure.
  * - Designed for SPA (Single Page Application) architecture only.
+ * - Follows official Supabase JS documentation patterns.
  *
  * Other modules should import ONLY this adapter, not the raw SDK.
  */
@@ -26,11 +27,19 @@ function createSupabaseClient(): SupabaseClient {
   if (!url || !anonKey) {
     // Log metadata only; never log actual keys
     console.warn("[supabase] Missing PUBLIC env for browser client");
+    throw new Error("Supabase URL and anon key are required");
   }
 
   const clientOptions: SupabaseClientOptions<any> = {
     auth: {
       persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+    },
+    global: {
+      headers: {
+        'X-Client-Info': 'supaview@0.0.1',
+      },
     },
   };
 

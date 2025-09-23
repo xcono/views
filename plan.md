@@ -6,8 +6,8 @@ This document defines goals, architectural contracts, and acceptance criteria fo
 
 ## 1. Purpose and Scope
 
-- **Objective**: Provide a minimal, stable integration layer that enables composing pages from UI blocks backed by configurable data queries, prioritizing alias‑first data shaping.
-- **Alias‑First Principle**: Produce final field names at the data edge (PostgREST with aliases) so the UI receives ready‑to‑render keys with no ad‑hoc transformations inside components.
+- **Objective**: Provide a minimal, stable integration layer that enables composing pages from UI blocks backed by configurable data queries, using direct data flow from Supabase to shadcn-svelte components.
+- **Direct Data Flow Principle**: Supabase responses are passed directly to UI components without intermediate normalization. Alias-first select ensures proper field naming at the PostgREST level.
 - **Out of Scope**: Building a complex UI framework, designing a custom ORM/DSL beyond a small declarative query shape, or moving business logic to the client.
 - **Constraints**: Secrets are environment‑only; client executes read‑safe operations; **SPA (Single Page Application)** architecture only.
 
@@ -38,15 +38,16 @@ Non‑goals include: creating a new visual framework, duplicating database logic
 ## 4. Architecture Overview
 
 ### 4.1 Layers
-- **Data Integration Layer**: Declarative QueryConfig, preflight using Supabase schema invariants, DataSource executor, QueryRunner, optional cache.
-- **UI Layer**: Stable block contracts (table, card, list, chart) with minimal props; no in‑component mapping logic.
-- **Designer**: Alias mapping wizard, contract checks, preview, add to canvas.
+- **Data Integration Layer**: Declarative QueryConfig, preflight validation, DataSource executor, QueryRunner, optional cache.
+- **UI Layer**: shadcn-svelte components that receive Supabase data directly via props; no data transformation inside components.
+- **Designer**: Query builder UI, alias mapping, preview, canvas management.
 - **Persistence**: Save/load page configurations as JSON in the data store.
 
 ### 4.2 Stability Contracts
-- **Layer independence**: UI is unaware of data source mechanics; receives already‑shaped data.
+- **Direct data flow**: UI components receive Supabase response data directly via props.
 - **Small, explicit interfaces**: Single‑responsibility modules; typed contracts.
 - **Determinism**: Serializable configs, predictable rendering, no hidden transforms.
+- **Type safety**: Leverage `QueryData<typeof query>` for automatic TypeScript inference.
 
 ---
 
@@ -83,8 +84,9 @@ Non‑goals include: creating a new visual framework, duplicating database logic
   - Server/data error (e.g., failed view/RPC). Log metadata only.
 
 ### 5.3 DataSource Contract and Implementation
-- **Contract**: A single method to execute a QueryConfig and return a flat array of objects with aliased keys.
-- **Implementation (Supabase)**: Translate QueryConfig to PostgREST (and SQL/RPC when explicitly allowed). Normalize errors, enforce caps, avoid logging sensitive content.
+- **Contract**: A single method to execute a QueryConfig and return Supabase response data directly.
+- **Implementation (Supabase)**: Translate QueryConfig to PostgREST calls. Return `{ data: T[], error: null | PostgrestError }` format.
+- **Direct data flow**: Pass Supabase response data directly to UI components without normalization.
 - **SSR Safety**: Initialize the client for **SPA-only** architecture; never expose secrets in the browser.
 
 ### 5.4 QueryRunner Responsibilities
@@ -102,20 +104,21 @@ Non‑goals include: creating a new visual framework, duplicating database logic
 ## 6. UI Blocks Specification
 
 ### 6.1 General Principles
-- Minimal, stable props; no data shaping inside components.
+- Receive Supabase data directly via props; no data transformation inside components.
+- Use shadcn-svelte components with their native prop interfaces.
 - Accessibility and keyboard navigation consistent with shadcn‑svelte patterns.
-- Svelte 5 compatibility; use recommended composition patterns.
+- Svelte 5 compatibility; use `$props()` and `$state()` patterns.
 
 ### 6.2 Baseline Blocks
-- **Table**: Columns derived from item keys; empty state; header stability; scrolling/pagination guidance.
-- **Card**: Grid layout; required title; optional companions; resilience to long text.
-- **List**: Vertical list; optional meta; keyboard navigation.
-- **Chart**: Simple numeric visualization; autoscaling; neutral number/date formatting.
+- **Table**: Use shadcn-svelte Table component; accept `data: T[]` prop directly.
+- **Card**: Use shadcn-svelte Card component; accept `data: T[]` prop directly.
+- **List**: Simple list component; accept `data: T[]` prop directly.
+- **Chart**: Chart component; accept `data: T[]` prop directly.
 
 ### 6.3 shadcn‑svelte Integration
-- Align with `huntabyte/shadcn-svelte` component APIs and accessibility expectations.
-- Respect headless and styling dependencies; isolate re‑exports to shield internal changes.
-- Keep the block contracts independent of UI library internals.
+- Use shadcn-svelte components as-is; no wrapper abstractions.
+- Leverage `QueryData<typeof query>` for automatic TypeScript inference.
+- Keep components thin; delegate styling and behavior to shadcn-svelte.
 
 ---
 

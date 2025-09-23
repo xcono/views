@@ -1,8 +1,10 @@
 ## Architecture & Behavior Overview
 
-The application is a thin integration between a data layer (Supabase via supabase‑js) and a UI layer (shadcn‑svelte on SvelteKit). This is a **SPA (Single Page Application)** architecture. Behavior is alias‑first: users map component props to columns, producing an alias‑select that shapes data at the PostgREST edge. A discovery‑driven preflight validates the query (tables/columns/operators/limits, RLS visibility) without heavy client‑side validators. The `QueryRunner` orchestrates preflight, policy checks, and execution via a Supabase `DataSource`, returning arrays of aliased objects. UI blocks render these objects directly, with no in‑component transforms.
+The app tend to utilize high cohesion where "supabase response => (minimal mapping or no mapping) => shadcn component props" approach.
 
-Operationally, the system is **SPA-only** and privacy‑aware: client creation is browser‑bound, secrets never leak to the browser, and only metadata (duration, row count, table name) is logged. Performance is safeguarded by strict limits and preview caps, and caching (optional) is a small in‑memory TTL keyed by a stable hash of the `QueryConfig`. All integration details (component APIs, accessibility, Svelte 5 notes; client creation, PostgREST semantics, error handling) must be verified against the `context7` docs for `huntabyte/shadcn-svelte` and `supabase/supabase-js`.
+The application is a thin integration between a data layer (Supabase via supabase‑js) and a UI layer (shadcn‑svelte on SvelteKit). This is a **SPA (Single Page Application)** architecture with **direct data flow**: Supabase response data is passed directly to shadcn-svelte components via props without intermediate normalization. Direct data flow ensures proper field naming at the PostgREST level. A discovery‑driven preflight validates queries (tables/columns/operators/limits, RLS visibility) without heavy client‑side validators. The `QueryRunner` orchestrates preflight, policy checks, and execution via a Supabase `DataSource`, returning Supabase response format directly.
+
+Operationally, the system is **SPA-only** and privacy‑aware: client creation is browser‑bound, secrets never leak to the browser, and only metadata (duration, row count, table name) is logged. Performance is safeguarded by strict limits and preview caps, and caching (optional) is a small in‑memory TTL keyed by a stable hash of the `QueryConfig`. All integration details must be verified against the `context7` docs for `huntabyte/shadcn-svelte` and `supabase/supabase-js`.
 
 # Decomposition — Implementation Tasks (Aligned to plan.md)
 
@@ -34,53 +36,53 @@ Implement a module that reads table/view metadata (columns, types, nullability, 
 - Constraints: do not over‑fetch; avoid secrets in logs; respect RLS (surface policy errors clearly).
 - Finish by verifying discovery approach against `supabase` meta/information‑schema guidance using `context7`.
 
-[CURRENT] ## Task 4 — Preflight Validator (No heavy client validation)
+[DONE] ## Task 4 — Preflight Validator (No heavy client validation)
 
 Build a preflight validator that uses Task 3 metadata to validate `QueryConfig`: ensure `from` is allowed, columns exist, operators match types, and limits are within caps. Produce actionable, categorized errors (config, permission, transport, server/data) without leaking payloads.
 
 - Constraints: no Zod; rely on discovery; preview limit must be stricter.
 - Finish by confirming operator/type compatibility and error handling patterns in `supabase/supabase-js` via `context7`.
 
-[NEXT] ## Task 5 — DataSource (Supabase PostgREST/SQL)
+[DONE] ## Task 5 — DataSource (Supabase PostgREST/SQL)
 
 Define `DataSource` interface and implement a Supabase version translating `QueryConfig` to PostgREST calls (and SQL/RPC if explicitly enabled). Normalize errors, enforce caps, and return arrays of aliased objects. Keep implementation thin and readable.
 
-- Constraints: metadata‑only logging; SPA-only client usage.
+- Constraints: metadata‑only logging; SPA‑only client usage.
 - Finish by checking query composition and error normalization practices in `supabase/supabase-js` via `context7`.
 
-## Task 6 — QueryRunner
+[DONE] ## Task 6 — UI Block Contracts (Table/Card/List/Chart)
 
-Create a `QueryRunner` that: runs preflight (Task 4), applies allow‑list policy, delegates to `DataSource`, and returns `any[]`. Emit duration, row count, and table name only. Provide a single entrypoint consumed by UI and Designer.
+Create thin wrapper components that receive Supabase data directly via props and pass it to shadcn‑svelte components. No data transformation inside components.
 
-- Constraints: no payload logging; deterministic behavior.
-- Finish by verifying delegation patterns and pagination/limit guidance in `supabase/supabase-js` via `context7`.
-
-## Task 7 — Alias Helpers
-
-Provide helpers to build alias‑first select strings from mapping objects and to ensure required prop coverage for blocks. Keep them pure and easily testable; never perform network calls here.
-
-- Constraints: avoid hidden transforms; stable ordering for deterministic caching.
-- Finish by cross‑checking PostgREST alias syntax expectations with `supabase/supabase-js` via `context7`.
-
-## Task 8 — UI Block Contracts (Table/Card/List/Chart)
-
-Declare minimal, stable props for each block. No data shaping inside components. Provide lightweight Svelte wrappers that internally use shadcn‑svelte components and follow accessibility guidelines.
-
-- Constraints: Svelte 5 compatibility; accessibility parity with shadcn‑svelte.
+- Constraints: Use shadcn-svelte components as-is; leverage `QueryData<typeof query>` for TypeScript inference.
 - Finish by verifying component prop expectations and a11y notes in `huntabyte/shadcn-svelte` via `context7`.
 
-## Task 9 — Designer (Alias Wizard) Skeleton
+[CURRENT] ## Task 7 — QueryRunner
 
-Implement a Svelte UI flow that: selects a block, selects a table/view (from discovery), maps required props to columns, builds alias‑select, runs preview through `QueryRunner`, shows contract warnings, and adds to the canvas. Enforce preview caps.
+Create a `QueryRunner` that: runs preflight (Task 4), applies allow‑list policy, delegates to `DataSource`, and returns Supabase response format `{ data: T[], error: null | PostgrestError }` directly. Emit duration, row count, and table name only. Provide a single entrypoint consumed by UI and Designer.
 
-- Constraints: do not add heavy validation; rely on discovery and database constraints.
+- Constraints: no payload logging; return Supabase response format directly; deterministic behavior.
+- Finish by verifying delegation patterns and pagination/limit guidance in `supabase/supabase-js` via `context7`.
+
+## Task 8 — Type Helpers
+
+Provide TypeScript helpers to infer component prop types from Supabase queries using `QueryData<typeof query>`. Keep them pure and easily testable; never perform network calls here.
+
+- Constraints: leverage `QueryData<typeof query>` for automatic type inference; stable typing for deterministic behavior.
+- Finish by cross‑checking TypeScript inference patterns with `supabase/supabase-js` via `context7`.
+
+## Task 9 — Designer (Query Builder) Skeleton
+
+Implement a Svelte UI flow that: selects a block type, selects a table/view (from discovery), builds alias‑first select, runs preview through `QueryRunner`, shows Supabase response data directly, and adds to the canvas. Enforce preview caps.
+
+- Constraints: use shadcn-svelte components; pass Supabase response data directly to preview; rely on discovery and database constraints.
 - Finish by verifying relevant UI elements and patterns in `huntabyte/shadcn-svelte` via `context7`.
 
 ## Task 10 — Canvas Renderer
 
-Render blocks sequentially from PageConfig with per‑block error boundaries, loading, and empty states. Keep the renderer agnostic of data fetching mechanics (it calls the single entrypoint).
+Render blocks sequentially from PageConfig with per‑block error boundaries, loading, and empty states. Pass Supabase response data directly to components.
 
-- Constraints: no data shaping; neutral fallbacks.
+- Constraints: no data transformation; pass Supabase `{ data, error }` directly to components; neutral fallbacks.
 - Finish by checking Svelte/shadcn composition patterns via `huntabyte/shadcn-svelte` docs in `context7`.
 
 ## Task 11 — PageConfig Persistence
