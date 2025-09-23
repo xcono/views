@@ -2,6 +2,7 @@ node_modules
 
 .cursor/mcp.json
 .vscode/
+project.inlang/
 
 supabase/local.md
 supabase/.branches

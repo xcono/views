@@ -39,6 +39,8 @@ alwaysApply: true
 - Update README and package package.json in parallel with features.
 - Provide minimal examples for new public APIs.
 
+---
+
 ## Memory and prompting best practices (Cursor)
 
 - Keep prompts specific; include only relevant context.
