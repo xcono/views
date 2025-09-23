@@ -247,3 +247,7 @@ Each phase should end production‑ready (passes quality gates).
 6. `terminal`: run all quality commands.
 7. If failing — fix and repeat.
 8. Document changes in PR.
+
+# IMPORTANT
+
+Since terminal commands are not allowed, use the `filesystem MCP` to run commands.
