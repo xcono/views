@@ -31,12 +31,14 @@ Before writing code, **gather facts via MCP**:
 
   - Inspect project structure (files, configs).
   - Before edits, output a short **diff plan** listing files to change and what will change.
+  - Get Supabase documentation and API references.
+  - Look up Supabase client methods, authentication, and best practices.
 
-- **`supabase`**
+- **`supabase` & `postgresql`**
 
-  - List tables/views/columns/types.
+  - List tables/views/columns/types directly from the database.
   - When uncertain, run a **sanity query** (`LIMIT 1`).
-  - Generate types if needed (`supabase gen types typescript ...`).
+  - Inspect schema structure, constraints, and relationships.
 
 - **`shadcn`**
 
@@ -136,7 +138,7 @@ A small, typed config describing either a REST (PostgREST) or SQL query.
 - `rest` requires `table`; `select` must reference existing columns.
 - `sql` requires `rawSql` and MUST be **SELECT‑only** on client.
 - Enforce `limit` (default 50, max 500).
-- If unsure, run a **sanity query** via MCP `supabase`.
+- If unsure, run a **sanity query** via MCP `supabase` or `postgresql`.
 
 ### Security & Privacy
 
@@ -238,134 +240,10 @@ Each phase should end production‑ready (passes quality gates).
 ## 13) Pre‑Generation Checklist (repeat every time)
 
 1. `context-7`: inspect structure; propose diff plan.
-2. `supabase`: confirm latest schema (run sanity query if needed).
+2. `supabase` or `postgresql`: confirm latest schema (run sanity query if needed).
 3. `shadcn`: confirm component & props.
 4. Write pseudocode + file list.
 5. Generate code.
 6. `terminal`: run all quality commands.
 7. If failing — fix and repeat.
 8. Document changes in PR.
-
----
-
----
-
-# Roadmap
-
-# 📋 Roadmap MVP — Data Layer + UI Integration (Supabase + SvelteKit + shadcn)
-
-Goal: build a thin integration layer between Supabase (data) and shadcn (UI blocks) inside a SvelteKit project, enabling a minimal page builder MVP.
-
----
-
-## M0 — Project Bootstrap
-
-1. **Initialize project**
-   [x] Create a new SvelteKit (SPA) project.
-   [x] Configure TypeScript, Vite, PNPM.
-2. **UI and styling setup**
-   [x] Add TailwindCSS.
-   [x] Install shadcn-svelte with base components.
-3. **Quality infrastructure**
-   [x] Configure eslint, prettier, svelte-check.
-   [x] Setup Vitest for unit testing.
-
----
-
-## M1 — Data Layer (Supabase integration)
-
-4. **Install and configure `supabase-js`**
-   [] Create SupabaseClient.
-   [] Wire environment variables (URL, anon key).
-5. **Define `QueryConfig` type**
-   [] Types for select, filter, orderBy, rawSql.
-   [] Add simple validation.
-6. **Create `DataSource` interface**
-   [] Method: `execute(query: QueryConfig)`.
-7. **Implement `SupabaseDataSource`**
-   [] Support select, filter, orderBy, limit/offset.
-   [] Handle errors gracefully.
-8. **Implement `SQLDataSource`**
-   [] Call Supabase SQL API.
-   [] Handle errors, return data.
-9. **Add QueryRunner**
-   [] `run(query)` chooses between REST or SQL source.
-10. **Unit tests for Data Layer**
-    [] Examples on simple table queries.
-    [] Example for raw SQL query.
-
----
-
-## M2 — Data Layer Extensions
-
-11. **Extend filters**
-    [] Support operators (`eq`, `neq`, `gt`, `ilike`, `in`).
-12. **Mapping / transform utility**
-    [] Map fields to new object structure.
-    [] Support dot-notation.
-13. **In-memory caching**
-    [] Wrapper `withCache(ttl)`.
-    [] Tests for TTL and invalidation.
-14. **Serialization / deserialization**
-    [] Save and restore `QueryConfig` to Supabase/S3.
-
----
-
-## M3 — UI Blocks (shadcn components)
-
-15. **Create TableBlock.svelte**
-    [] Accepts `items: any[]`.
-    [] Render using shadcn Table.
-16. **Create CardBlock.svelte**
-    [] Grid of cards (title, description).
-17. **Create ListBlock.svelte**
-    [] Vertical list of items.
-18. **Create ChartBlock.svelte**
-    [] Integrate svelte-apexcharts.
-    [] Render simple chart.
-
----
-
-## M4 — Layout & Page Config
-
-19. **Define PageConfig type**
-    [] Holds blocks list + QueryConfigs.
-20. **Implement Canvas.svelte**
-    [] Renders blocks from PageConfig.
-21. **Implement Designer.svelte**
-    [] Use `svelte-grid` for drag & resize.
-22. **Save PageConfig**
-    [] Persist config to Supabase.
-    [] Load config when page opens.
-23. **Export/import PageConfig**
-    [] Save to S3 or JSON file.
-
----
-
-## M5 — User Scenario (MVP workflow)
-
-24. **UI: table selection**
-    [] Dropdown of Supabase tables.
-25. **UI: query input**
-    [] Simple text area (SQL) or JSON config.
-    [] Execute and show preview.
-26. **UI: block type selection**
-    [] Select component type: Table, Card, List, Chart.
-27. **UI: field mapping**
-    [] Map query fields → component props.
-28. **Add block to PageConfig**
-    [] Append to Canvas.
-29. **Preview assembled page**
-    [] Render Canvas with multiple blocks.
-30. **Documentation**
-    [] README with architecture notes.
-    [] Setup & usage instructions.
-
----
-
-# ✅ MVP Deliverables
-
-- Data Layer: REST + SQL sources, QueryRunner, caching, mapping.
-- UI Blocks: Table, Card, List, Chart.
-- Page Builder: drag-and-drop Canvas, config persistence.
-- Minimal UX: select table, define query, choose block, assemble page.
