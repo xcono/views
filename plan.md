@@ -9,7 +9,7 @@ This document defines goals, architectural contracts, and acceptance criteria fo
 - **Objective**: Provide a minimal, stable integration layer that enables composing pages from UI blocks backed by configurable data queries, prioritizing alias‑first data shaping.
 - **Alias‑First Principle**: Produce final field names at the data edge (PostgREST with aliases) so the UI receives ready‑to‑render keys with no ad‑hoc transformations inside components.
 - **Out of Scope**: Building a complex UI framework, designing a custom ORM/DSL beyond a small declarative query shape, or moving business logic to the client.
-- **Constraints**: Secrets are environment‑only; client executes read‑safe operations; SSR/SPA concerns are handled by clear client initialization boundaries.
+- **Constraints**: Secrets are environment‑only; client executes read‑safe operations; **SPA (Single Page Application)** architecture only.
 
 ---
 
@@ -27,9 +27,9 @@ Non‑goals include: creating a new visual framework, duplicating database logic
 
 ## 3. Tech Stack and Quality Gates
 
-- **Platform**: SvelteKit 2.x (Svelte 5), TypeScript 5.x, SPA mode.
+- **Platform**: SvelteKit 2.x (Svelte 5), TypeScript 5.x, **SPA mode only**.
 - **UI**: Tailwind CSS, shadcn‑svelte (align with `huntabyte/shadcn-svelte` component interfaces and patterns).
-- **Data**: supabase‑js 2.x for PostgREST/SQL/RPC; follow client creation, SSR safety, and error handling recommendations.
+- **Data**: supabase‑js 2.x for PostgREST/SQL/RPC; follow client creation, **SPA architecture**, and error handling recommendations.
 - **Quality**: ESLint, Prettier, svelte‑check, Vitest (+ Testing Library). All gates must be green pre‑merge.
 - **Versioning**: Pin dependency versions; evolve contracts via explicit versioning.
 
@@ -85,7 +85,7 @@ Non‑goals include: creating a new visual framework, duplicating database logic
 ### 5.3 DataSource Contract and Implementation
 - **Contract**: A single method to execute a QueryConfig and return a flat array of objects with aliased keys.
 - **Implementation (Supabase)**: Translate QueryConfig to PostgREST (and SQL/RPC when explicitly allowed). Normalize errors, enforce caps, avoid logging sensitive content.
-- **SSR Safety**: Initialize the client in an SSR‑safe manner; never expose secrets in the browser.
+- **SSR Safety**: Initialize the client for **SPA-only** architecture; never expose secrets in the browser.
 
 ### 5.4 QueryRunner Responsibilities
 - Validate with discovery invariants (no heavy client schema libs).
@@ -173,7 +173,7 @@ Non‑goals include: creating a new visual framework, duplicating database logic
 - **Expensive scans**: Enforce limits; require filters on large tables; highlight index gaps.
 - **Permissions/RLS pitfalls**: Surface policy‑aware errors; document remediation.
 - **Caching staleness**: TTL + explicit invalidation; avoid caching when policy changes are suspected.
-- **SSR pitfalls**: Use environment‑specific client factories; never expose secrets client‑side.
+- **SSR pitfalls**: Use **SPA-only** client factories; never expose secrets client‑side.
 
 ---
 

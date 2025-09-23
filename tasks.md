@@ -1,24 +1,24 @@
 ## Architecture & Behavior Overview
 
-The application is a thin integration between a data layer (Supabase via supabase‑js) and a UI layer (shadcn‑svelte on SvelteKit). Behavior is alias‑first: users map component props to columns, producing an alias‑select that shapes data at the PostgREST edge. A discovery‑driven preflight validates the query (tables/columns/operators/limits, RLS visibility) without heavy client‑side validators. The `QueryRunner` orchestrates preflight, policy checks, and execution via a Supabase `DataSource`, returning arrays of aliased objects. UI blocks render these objects directly, with no in‑component transforms.
+The application is a thin integration between a data layer (Supabase via supabase‑js) and a UI layer (shadcn‑svelte on SvelteKit). This is a **SPA (Single Page Application)** architecture. Behavior is alias‑first: users map component props to columns, producing an alias‑select that shapes data at the PostgREST edge. A discovery‑driven preflight validates the query (tables/columns/operators/limits, RLS visibility) without heavy client‑side validators. The `QueryRunner` orchestrates preflight, policy checks, and execution via a Supabase `DataSource`, returning arrays of aliased objects. UI blocks render these objects directly, with no in‑component transforms.
 
-Operationally, the system is SSR‑safe and privacy‑aware: client creation is environment‑bound, secrets never leak to the browser, and only metadata (duration, row count, table name) is logged. Performance is safeguarded by strict limits and preview caps, and caching (optional) is a small in‑memory TTL keyed by a stable hash of the `QueryConfig`. All integration details (component APIs, accessibility, Svelte 5 notes; client creation, PostgREST semantics, error handling) must be verified against the `context7` docs for `huntabyte/shadcn-svelte` and `supabase/supabase-js`.
+Operationally, the system is **SPA-only** and privacy‑aware: client creation is browser‑bound, secrets never leak to the browser, and only metadata (duration, row count, table name) is logged. Performance is safeguarded by strict limits and preview caps, and caching (optional) is a small in‑memory TTL keyed by a stable hash of the `QueryConfig`. All integration details (component APIs, accessibility, Svelte 5 notes; client creation, PostgREST semantics, error handling) must be verified against the `context7` docs for `huntabyte/shadcn-svelte` and `supabase/supabase-js`.
 
 # Decomposition — Implementation Tasks (Aligned to plan.md)
 
 Each task below is small enough for a coding LLM agent to implement in isolation. Agents MUST treat `context7` as the single source of truth for:
 
 - `huntabyte/shadcn-svelte` (component APIs, props, accessibility, Svelte 5 integration)
-- `supabase/supabase-js` (client creation, SSR safety, PostgREST usage, errors)
+- `supabase/supabase-js` (client creation, SPA architecture, PostgREST usage, errors)
 
 For every task, agents must end with a checklist verification against `context7` docs for both libraries where relevant.
 
-## Task 1 — Supabase Client Factory (SSR‑safe)
+## Task 1 — Supabase Client Factory (SPA‑only)
 
-Define a minimal client factory that creates a Supabase client using environment variables and guards for SSR/SPA boundaries. Ensure no secrets leak to the browser and that the anon key is used client‑side. Provide a tiny integration adapter surface that other modules import (not the raw SDK), to keep callsites stable if SDK APIs change.
+Define a minimal client factory that creates a Supabase client using environment variables for **SPA (Single Page Application)** architecture. Ensure no secrets leak to the browser and that the anon key is used client‑side. Provide a tiny integration adapter surface that other modules import (not the raw SDK), to keep callsites stable if SDK APIs change.
 
-- Constraints: no heavy validation libs; environment‑only secrets; log metadata only (never tokens/SQL).
-- Finish by verifying client creation and SSR guidance in `supabase/supabase-js` via `context7`.
+- Constraints: no heavy validation libs; environment‑only secrets; log metadata only (never tokens/SQL); SPA-only architecture.
+- Finish by verifying client creation guidance in `supabase/supabase-js` via `context7`.
 
 ## Task 2 — QueryConfig Types and Invariants (Discovery‑driven)
 
@@ -45,7 +45,7 @@ Build a preflight validator that uses Task 3 metadata to validate `QueryConfig`:
 
 Define `DataSource` interface and implement a Supabase version translating `QueryConfig` to PostgREST calls (and SQL/RPC if explicitly enabled). Normalize errors, enforce caps, and return arrays of aliased objects. Keep implementation thin and readable.
 
-- Constraints: metadata‑only logging; SSR‑safe client usage.
+- Constraints: metadata‑only logging; SPA-only client usage.
 - Finish by checking query composition and error normalization practices in `supabase/supabase-js` via `context7`.
 
 ## Task 6 — QueryRunner
@@ -88,7 +88,7 @@ Render blocks sequentially from PageConfig with per‑block error boundaries, lo
 Add JSON save/load for PageConfig with schema versioning and optimistic concurrency. Keep a stable format to ensure deterministic round‑trip.
 
 - Constraints: metadata‑only logs; no secrets.
-- Finish by verifying storage patterns and SSR notes in `supabase/supabase-js` via `context7`.
+- Finish by verifying storage patterns in `supabase/supabase-js` via `context7`.
 
 ## Task 12 — Caching (Optional)
 
