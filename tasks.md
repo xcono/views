@@ -13,35 +13,35 @@ Each task below is small enough for a coding LLM agent to implement in isolation
 
 For every task, agents must end with a checklist verification against `context7` docs for both libraries where relevant.
 
-## Task 1 — Supabase Client Factory (SPA‑only)
+[DONE] ## Task 1 — Supabase Client Factory (SPA‑only)
 
 Define a minimal client factory that creates a Supabase client using environment variables for **SPA (Single Page Application)** architecture. Ensure no secrets leak to the browser and that the anon key is used client‑side. Provide a tiny integration adapter surface that other modules import (not the raw SDK), to keep callsites stable if SDK APIs change.
 
 - Constraints: no heavy validation libs; environment‑only secrets; log metadata only (never tokens/SQL); SPA-only architecture.
 - Finish by verifying client creation guidance in `supabase/supabase-js` via `context7`.
 
-## Task 2 — QueryConfig Types and Invariants (Discovery‑driven)
+[DONE] ## Task 2 — QueryConfig Types and Invariants (Discovery‑driven)
 
 Create a typed `QueryConfig` for rest/sql kinds, including `from`, alias‑first `select`, `filters`, `orderBy`, `limit/offset`. Do not introduce Zod or similar; rely on discovery‑based invariants (see Task 3) to check that tables/columns/operators exist and are permitted. Keep types narrow but practical.
 
 - Constraints: alias‑first is mandatory; strict caps for limit/preview.
 - Finish by checking PostgREST select/filters/ordering semantics in `supabase/supabase-js` docs via `context7`.
 
-## Task 3 — Schema Discovery Module (Supabase invariants)
+[DONE] ## Task 3 — Schema Discovery Module (Supabase invariants)
 
 Implement a module that reads table/view metadata (columns, types, nullability, constraints, FKs, indexes presence, RLS/policies visibility) for allow‑listed objects. Use this only for preflight, not for runtime data shaping. Cache lightweight metadata in memory with short TTL.
 
 - Constraints: do not over‑fetch; avoid secrets in logs; respect RLS (surface policy errors clearly).
 - Finish by verifying discovery approach against `supabase` meta/information‑schema guidance using `context7`.
 
-## Task 4 — Preflight Validator (No heavy client validation)
+[CURRENT] ## Task 4 — Preflight Validator (No heavy client validation)
 
 Build a preflight validator that uses Task 3 metadata to validate `QueryConfig`: ensure `from` is allowed, columns exist, operators match types, and limits are within caps. Produce actionable, categorized errors (config, permission, transport, server/data) without leaking payloads.
 
 - Constraints: no Zod; rely on discovery; preview limit must be stricter.
 - Finish by confirming operator/type compatibility and error handling patterns in `supabase/supabase-js` via `context7`.
 
-## Task 5 — DataSource (Supabase PostgREST/SQL)
+[NEXT] ## Task 5 — DataSource (Supabase PostgREST/SQL)
 
 Define `DataSource` interface and implement a Supabase version translating `QueryConfig` to PostgREST calls (and SQL/RPC if explicitly enabled). Normalize errors, enforce caps, and return arrays of aliased objects. Keep implementation thin and readable.
 
