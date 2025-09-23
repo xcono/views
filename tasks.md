@@ -57,40 +57,34 @@ Create thin wrapper components that receive Supabase data directly via props and
 - Constraints: Use shadcn-svelte components as-is; leverage `QueryData<typeof query>` for TypeScript inference.
 - Finish by verifying component prop expectations and a11y notes in `huntabyte/shadcn-svelte` via `context7`.
 
-[CURRENT] ## Task 7 — QueryRunner
+[DONE] ## Task 7 — QueryRunner
 
 Create a `QueryRunner` that: runs preflight (Task 4), applies allow‑list policy, delegates to `DataSource`, and returns Supabase response format `{ data: T[], error: null | PostgrestError }` directly. Emit duration, row count, and table name only. Provide a single entrypoint consumed by UI and Designer.
 
 - Constraints: no payload logging; return Supabase response format directly; deterministic behavior.
 - Finish by verifying delegation patterns and pagination/limit guidance in `supabase/supabase-js` via `context7`.
 
-## Task 8 — Type Helpers
+[NEW] ## Task 8 — Centralized Error Helper
 
-Provide TypeScript helpers to infer component prop types from Supabase queries using `QueryData<typeof query>`. Keep them pure and easily testable; never perform network calls here.
+- Create `src/lib/views/errors.ts` with `toPostgrestError` to map internal/config/transport failures into `PostgrestError`.
+- Replace ad-hoc conversions with this helper across data layer.
+- Verify behavior against Supabase error shape.
 
-- Constraints: leverage `QueryData<typeof query>` for automatic type inference; stable typing for deterministic behavior.
-- Finish by cross‑checking TypeScript inference patterns with `supabase/supabase-js` via `context7`.
+[NEW] ## Task 9 — Optional Count Support (REST)
 
-## Task 9 — Designer (Query Builder) Skeleton
+- Extend `RestQueryConfig` with `count?: 'exact' | 'planned' | 'estimated'`.
+- Pass through to `.select(select, { count })` and include `count` only in metadata logs/UX.
+- Keep default disabled.
 
-Implement a Svelte UI flow that: selects a block type, selects a table/view (from discovery), builds alias‑first select, runs preview through `QueryRunner`, shows Supabase response data directly, and adds to the canvas. Enforce preview caps.
+[NEW] ## Task 10 — Friendly Operator Adapter (Designer Ergonomics)
 
-- Constraints: use shadcn-svelte components; pass Supabase response data directly to preview; rely on discovery and database constraints.
-- Finish by verifying relevant UI elements and patterns in `huntabyte/shadcn-svelte` via `context7`.
+- Add `src/lib/views/operators.ts` with `mapFriendlyFilter(s)` to translate UI-friendly operators to PostgREST ops/values.
+- Use only at the UI/Designer layer; core DSL remains PostgREST-native.
 
-## Task 10 — Canvas Renderer
+[NEW] ## Task 11 — Live (Realtime) Helper
 
-Render blocks sequentially from PageConfig with per‑block error boundaries, loading, and empty states. Pass Supabase response data directly to components.
-
-- Constraints: no data transformation; pass Supabase `{ data, error }` directly to components; neutral fallbacks.
-- Finish by checking Svelte/shadcn composition patterns via `huntabyte/shadcn-svelte` docs in `context7`.
-
-## Task 11 — PageConfig Persistence
-
-Add JSON save/load for PageConfig with schema versioning and optimistic concurrency. Keep a stable format to ensure deterministic round‑trip.
-
-- Constraints: metadata‑only logs; no secrets.
-- Finish by verifying storage patterns in `supabase/supabase-js` via `context7`.
+- Add `src/lib/views/live.ts` with `subscribeTable({ table, events, filter, onEvent })` returning an unsubscribe.
+- Keep opt-in, separate from runner; no coupling to DataSource.
 
 ## Task 12 — Caching (Optional)
 

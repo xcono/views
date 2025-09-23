@@ -41,7 +41,6 @@ Non‑goals include: creating a new visual framework, duplicating database logic
 - **Data Integration Layer**: Declarative QueryConfig, preflight validation, DataSource executor, QueryRunner, optional cache.
 - **UI Layer**: shadcn-svelte components that receive Supabase data directly via props; no data transformation inside components.
 - **Designer**: Query builder UI, alias mapping, preview, canvas management.
-- **Persistence**: Save/load page configurations as JSON in the data store.
 
 ### 4.2 Stability Contracts
 - **Direct data flow**: UI components receive Supabase response data directly via props.
@@ -60,6 +59,7 @@ Non‑goals include: creating a new visual framework, duplicating database logic
   - Client executes read‑safe operations only; computed fields are produced in the database (views or RPC).
   - Enforce strict row limits and protect previews from accidental scans.
   - Perform preflight checks before execution; surface actionable, user‑friendly errors.
+  - Optional: `count` hint (`exact` | `planned` | `estimated`) for REST queries to request PostgREST counts; default is disabled to avoid overhead.
 
 ### 5.2 Supabase‑Driven Schema Invariants (Discovery‑Based Validation)
 - **No heavy client‑side validation**: Do not introduce Zod or similar at this stage. Validation relies on Supabase schema discovery and database invariants.
@@ -77,15 +77,10 @@ Non‑goals include: creating a new visual framework, duplicating database logic
   - Filters and orderings reference existing columns; operators are compatible with column types.
   - `limit`/`offset` within configured caps; preview limit uses a stricter cap.
   - If RLS blocks access, surface a policy‑aware error with remediation guidance.
-- **Error Taxonomy**:
-  - Configuration error (invalid table/column/operator/limit).
-  - Policy/permission error (RLS or role not permitted).
-  - Transport/runtime error (network, transient failure).
-  - Server/data error (e.g., failed view/RPC). Log metadata only.
 
 ### 5.3 DataSource Contract and Implementation
 - **Contract**: A single method to execute a QueryConfig and return Supabase response data directly.
-- **Implementation (Supabase)**: Translate QueryConfig to PostgREST calls. Return `{ data: T[], error: null | PostgrestError }` format.
+- **Implementation (Supabase)**: Translate QueryConfig to PostgREST calls. Return `{ data: T[], error: null | PostgrestError }` format. If `count` is provided for REST, call `.select(select, { count })` and expose the value only in metadata logs/UX.
 - **Direct data flow**: Pass Supabase response data directly to UI components without normalization.
 - **SSR Safety**: Initialize the client for **SPA-only** architecture; never expose secrets in the browser.
 
@@ -93,9 +88,18 @@ Non‑goals include: creating a new visual framework, duplicating database logic
 - Validate with discovery invariants (no heavy client schema libs).
 - Apply allow‑list policy for tables/columns.
 - Delegate execution to the DataSource; return results as arrays.
-- Emit metadata for observability (duration, row count, table name) without leaking payloads.
+- Emit metadata for observability (duration, row count, table name, optional total count) without leaking payloads.
 
-### 5.5 Caching and Serialization
+### 5.5 Error Handling
+- Centralize error shaping via a small helper that converts internal/config/transport failures into a Supabase-compatible `PostgrestError` while preserving original Supabase errors untouched. Log metadata only.
+
+### 5.6 Optional Friendly Operator Adapter
+- Provide an optional adapter that maps UI-friendly operators (e.g., contains/startsWith/endsWith/between) to PostgREST operators and value shapes prior to execution. Keep the core DSL PostgREST-native; adapter is purely ergonomic for the Designer.
+
+### 5.7 Live (Realtime) — Separate Module
+- Offer a thin helper to subscribe to table events (`INSERT`/`UPDATE`/`DELETE`) using Supabase Realtime channels. Keep it opt‑in and decoupled from the runner.
+
+### 5.8 Caching and Serialization
 - **Cache (optional)**: In‑memory TTL cache, key derived from a stable hash of QueryConfig. Define invalidation rules for all parameters.
 - **Serialization**: Bidirectional JSON (to/from) with an explicit schema version for future migrations.
 
@@ -118,17 +122,16 @@ Non‑goals include: creating a new visual framework, duplicating database logic
 ### 6.3 shadcn‑svelte Integration
 - Use shadcn-svelte components as-is; no wrapper abstractions.
 - Leverage `QueryData<typeof query>` for automatic TypeScript inference.
-- Keep components thin; delegate styling and behavior to shadcn-svelte.
 
 ---
 
 ## 7. Designer and Canvas
 
 ### 7.1 Designer
-- Stepwise flow: choose block → choose table/view → map required props to columns → build alias‑select → preview → add to canvas.
+- Stepwise flow: choose block → choose table/view (from discovery) → map required props to columns → build alias‑first select → preview → add to canvas.
 - Use schema discovery to drive available columns and to validate mappings.
 - Enforce preview caps; surface contract and policy errors early.
-- Do not implement heavy client validation; trust database invariants and discovery. A future “form view” will introduce a rule‑mapping layer; it is out of scope now.
+- Optional UX: expose friendly operators in the builder UI and map them via the adapter to PostgREST ops.
 
 ### 7.2 Canvas
 - Sequential rendering of blocks from PageConfig.
@@ -146,7 +149,7 @@ Non‑goals include: creating a new visual framework, duplicating database logic
 - **RLS/Policies**: Rely on server‑side enforcement; the client uses least‑privileged roles.
 - **Query Limits**: Enforce strict row caps and guard against full‑table scans; encourage indexed filters.
 - **Performance**: Define P95 targets for reads; prefer indexed access paths. Preview must use tighter limits.
-- **Telemetry**: Log only metadata (duration, row counts, table names). No payload logging.
+- **Telemetry**: Log only metadata (duration, row counts, table names, optional total count). No payload logging.
 
 ---
 
@@ -183,12 +186,11 @@ Non‑goals include: creating a new visual framework, duplicating database logic
 ## 12. Release Plan (MVP → Extensions)
 
 - **M0**: Project skeleton, base dependencies, quality gates.
-- **M1**: Data integration layer (QueryConfig, discovery‑based preflight, DataSource, QueryRunner), basic tests.
-- **M2**: Alias helpers, optional in‑memory cache, JSON serialization.
+- **M1**: Data integration layer (QueryConfig, discovery‑based preflight, DataSource, QueryRunner, optional count support, centralized error helper), basic tests.
+- **M2**: Alias helpers, optional in‑memory cache, JSON serialization, friendly operator adapter.
 - **M3**: Minimal UI blocks and demo pages with mock data.
 - **M4**: Designer and canvas, save/load PageConfig.
-- **M5**: Access policy hardening, optional schema introspection UI, UX polish, documentation.
-- Future: Form view rule‑mapping validation layer (maps DB constraints to UI validation), advanced charts, server‑side pagination helpers, i18n, telemetry integrations.
+- **M5**: Live (Realtime) helper, access policy hardening, optional schema introspection UI, UX polish, documentation.
 
 ---
 

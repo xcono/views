@@ -19,28 +19,14 @@ import {
   isRestQueryConfig,
   isSqlQueryConfig 
 } from "./query.js";
+import { validateQueryConfig } from "./validator.js";
+import type { PostgrestError } from "@supabase/supabase-js";
+import { toPostgrestError } from "./errors.js";
 
-// DataSource execution result - matches Supabase response format
+// DataSource execution result - align with Supabase response format
 export type DataSourceResult<T = unknown> = {
   data: T[] | null;
-  error: null;
-  metadata?: {
-    rowCount: number;
-    duration: number;
-    tableName: string;
-  };
-} | {
-  data: null;
-  error: {
-    type: "config" | "permission" | "transport" | "server";
-    message: string;
-    details?: Record<string, unknown>;
-  };
-  metadata?: {
-    rowCount: number;
-    duration: number;
-    tableName: string;
-  };
+  error: PostgrestError | null;
 };
 
 // DataSource interface
@@ -71,7 +57,7 @@ export class SupabaseRestSource implements DataSource {
       // Start query builder
       let query = client
         .from(config.from)
-        .select(selectString);
+        .select(selectString, { count: config.count });
       
       // Apply filters
       if (config.filters && config.filters.length > 0) {
@@ -92,60 +78,45 @@ export class SupabaseRestSource implements DataSource {
       }
       
       // Execute query
-      const { data, error } = await query;
+      const { data, error, count } = await query;
       
       const duration = Date.now() - startTime;
+      // Emit metadata only (no payload)
+      try {
+        // eslint-disable-next-line no-console
+        console.debug("[Query] REST", {
+          table: config.from,
+          rowCount: data?.length ?? 0,
+          totalCount: count ?? undefined,
+          durationMs: duration
+        });
+      } catch {}
       
       if (error) {
-        return {
-          data: null,
-          error: {
-            type: "server",
-            message: `Query execution failed: ${error.message}`,
-            details: {
-              code: error.code,
-              details: error.details,
-              hint: error.hint,
-              tableName: config.from
-            }
-          },
-          metadata: {
-            rowCount: 0,
-            duration,
-            tableName: config.from
-          }
-        };
+        return { data: null, error };
       }
       
-      return {
-        data: (data || []) as T[],
-        error: null,
-        metadata: {
-          rowCount: data?.length || 0,
-          duration,
-          tableName: config.from
-        }
-      };
+      return { data: (data || []) as T[], error: null };
       
     } catch (err) {
       const duration = Date.now() - startTime;
+      try {
+        // eslint-disable-next-line no-console
+        console.debug("[Query] REST error", {
+          table: config.from,
+          rowCount: 0,
+          durationMs: duration
+        });
+      } catch {}
       
       return {
         data: null,
-        error: {
-          type: "transport",
-          message: `Network error during query execution`,
-          details: {
-            error: err instanceof Error ? err.message : "Unknown error",
-            tableName: config.from,
-            duration
-          }
-        },
-        metadata: {
-          rowCount: 0,
-          duration,
-          tableName: config.from
-        }
+        error: toPostgrestError({
+          message: "Network error during query execution",
+          details: err instanceof Error ? err.message : "Unknown error",
+          hint: "transport",
+          code: "TRANSPORT"
+        })
       };
     }
   }
@@ -277,55 +248,40 @@ export class SupabaseSqlSource implements DataSource {
       });
       
       const duration = Date.now() - startTime;
+      try {
+        // eslint-disable-next-line no-console
+        console.debug("[Query] SQL", {
+          table: "sql_query",
+          rowCount: data?.length ?? 0,
+          durationMs: duration
+        });
+      } catch {}
       
       if (error) {
-        return {
-          data: null,
-          error: {
-            type: "server",
-            message: `SQL execution failed: ${error.message}`,
-            details: {
-              code: error.code,
-              details: error.details,
-              hint: error.hint
-            }
-          },
-          metadata: {
-            rowCount: 0,
-            duration,
-            tableName: "sql_query"
-          }
-        };
+        return { data: null, error };
       }
       
-      return {
-        data: (data || []) as T[],
-        error: null,
-        metadata: {
-          rowCount: data?.length || 0,
-          duration,
-          tableName: "sql_query"
-        }
-      };
+      return { data: (data || []) as T[], error: null };
       
     } catch (err) {
       const duration = Date.now() - startTime;
+      try {
+        // eslint-disable-next-line no-console
+        console.debug("[Query] SQL error", {
+          table: "sql_query",
+          rowCount: 0,
+          durationMs: duration
+        });
+      } catch {}
       
       return {
         data: null,
-        error: {
-          type: "transport",
-          message: `Network error during SQL execution`,
-          details: {
-            error: err instanceof Error ? err.message : "Unknown error",
-            duration
-          }
-        },
-        metadata: {
-          rowCount: 0,
-          duration,
-          tableName: "sql_query"
-        }
+        error: toPostgrestError({
+          message: "Network error during SQL execution",
+          details: err instanceof Error ? err.message : "Unknown error",
+          hint: "transport",
+          code: "TRANSPORT"
+        })
       };
     }
   }
@@ -342,23 +298,49 @@ export class QueryRunner implements DataSource {
     config: QueryConfig,
     mode: QueryExecutionMode = "normal"
   ): Promise<DataSourceResult<T>> {
-    // For now, skip preflight validation (will be added in next task)
-    // Just delegate to appropriate source
-    
-    if (isRestQueryConfig(config)) {
-      return this.restSource.execute<T>(config, mode);
-    } else if (isSqlQueryConfig(config)) {
-      return this.sqlSource.execute<T>(config, mode);
-    } else {
+    const startTime = Date.now();
+
+    // Preflight validation (includes allow-list via discovery)
+    const validation = await validateQueryConfig(config, { mode });
+    if (!validation.success) {
+      const durationMs = Date.now() - startTime;
+      try {
+        // eslint-disable-next-line no-console
+        console.debug("[QueryRunner] validation failed", {
+          table: isRestQueryConfig(config) ? config.from : "sql_query",
+          durationMs
+        });
+      } catch {}
+
       return {
         data: null,
-        error: {
-          type: "config",
-          message: "Invalid query configuration",
-          details: { config }
-        }
+        error: toPostgrestError({
+          message: validation.error.message,
+          details: validation.error.details,
+          hint: validation.error.type,
+          code: (validation.error.type || "config").toUpperCase()
+        })
       };
     }
+    
+    // Delegate to appropriate source
+    const result = isRestQueryConfig(config)
+      ? await this.restSource.execute<T>(config, mode)
+      : isSqlQueryConfig(config)
+        ? await this.sqlSource.execute<T>(config, mode)
+        : { data: null, error: toPostgrestError({ message: "Invalid query configuration", code: "CONFIG" }) };
+
+    // Emit metadata only
+    try {
+      // eslint-disable-next-line no-console
+      console.debug("[QueryRunner] executed", {
+        table: isRestQueryConfig(config) ? config.from : "sql_query",
+        rowCount: result.data?.length ?? 0,
+        durationMs: Date.now() - startTime
+      });
+    } catch {}
+
+    return result;
   }
 }
 

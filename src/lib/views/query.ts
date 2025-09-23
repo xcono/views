@@ -61,12 +61,16 @@ export type BaseQueryConfig = {
   offset?: number;
 };
 
+export type CountHint = 'exact' | 'planned' | 'estimated';
+
 export type RestQueryConfig = BaseQueryConfig & {
   kind: "rest";
   from: string; // table or view name
   select: AliasFirstSelect; // alias-first is mandatory
   filters?: ReadonlyArray<FilterSpec>;
   orderBy?: ReadonlyArray<OrderBySpec>;
+  // Optional total count hint; if set, will be requested and available for logs/UX.
+  count?: CountHint;
 };
 
 export type SqlQueryConfig = BaseQueryConfig & {
