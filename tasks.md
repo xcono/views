@@ -64,43 +64,43 @@ Create a `QueryRunner` that: runs preflight (Task 4), applies allow‑list polic
 - Constraints: no payload logging; return Supabase response format directly; deterministic behavior.
 - Finish by verifying delegation patterns and pagination/limit guidance in `supabase/supabase-js` via `context7`.
 
-[NEW] ## Task 8 — Centralized Error Helper
+[DONE] ## Task 8 — Centralized Error Helper
 
 - Create `src/lib/views/errors.ts` with `toPostgrestError` to map internal/config/transport failures into `PostgrestError`.
 - Replace ad-hoc conversions with this helper across data layer.
 - Verify behavior against Supabase error shape.
 
-[NEW] ## Task 9 — Optional Count Support (REST)
+[DONE] ## Task 9 — Optional Count Support (REST)
 
 - Extend `RestQueryConfig` with `count?: 'exact' | 'planned' | 'estimated'`.
 - Pass through to `.select(select, { count })` and include `count` only in metadata logs/UX.
 - Keep default disabled.
 
-[NEW] ## Task 10 — Friendly Operator Adapter (Designer Ergonomics)
+[DONE] ## Task 10 — Friendly Operator Adapter (Designer Ergonomics)
 
 - Add `src/lib/views/operators.ts` with `mapFriendlyFilter(s)` to translate UI-friendly operators to PostgREST ops/values.
 - Use only at the UI/Designer layer; core DSL remains PostgREST-native.
 
-[NEW] ## Task 11 — Live (Realtime) Helper
+[DONE] ## Task 11 — Live (Realtime) Helper
 
 - Add `src/lib/views/live.ts` with `subscribeTable({ table, events, filter, onEvent })` returning an unsubscribe.
 - Keep opt-in, separate from runner; no coupling to DataSource.
 
-## Task 12 — Caching (Optional)
-
-Introduce a small in‑memory TTL cache keyed by stable hash of `QueryConfig`. Define invalidation when any field changes; bypass cache on preview.
-
-- Constraints: avoid staleness on policy changes; keep code minimal.
-- Finish by checking pagination/limit behaviors and caching cautions in `supabase/supabase-js` via `context7`.
-
-## Task 13 — Testing & Quality Gates
+[CURRENT] ## Task 12 — Testing & Quality Gates
 
 Add unit tests for alias helpers, preflight validator (discovery‑backed), data source translation, and runner behaviors. Add minimal component tests for blocks (render with valid data, error boundaries). Ensure format/lint/typecheck run green.
 
 - Constraints: avoid snapshot brittleness; test observable behavior.
 - Finish by verifying API usage against `huntabyte/shadcn-svelte` and `supabase/supabase-js` in `context7`.
 
-## Task 14 — Documentation
+[NEXT] ## Task 13 — Caching (Optional)
+
+Introduce a small in‑memory TTL cache keyed by stable hash of `QueryConfig`. Define invalidation when any field changes; bypass cache on preview.
+
+- Constraints: avoid staleness on policy changes; keep code minimal.
+- Finish by checking pagination/limit behaviors and caching cautions in `supabase/supabase-js` via `context7`.
+
+[NEXT] ## Task 14 — Documentation
 
 Update README/architecture to reflect public contracts, discovery‑based validation approach, limits, and DoD. Include brief guidance on views/RPC for computed fields and RLS expectations.
 

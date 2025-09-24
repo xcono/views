@@ -247,3 +247,22 @@ Each phase should end production‑ready (passes quality gates).
 6. `terminal`: run all quality commands.
 7. If failing — fix and repeat.
 8. Document changes in PR.
+
+
+## 14) Supabase API access
+
+```env
+PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
+PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0
+```
+
+Example of accessing the API:
+```
+const client = supabase.getClient();
+const { data, error } = await client
+  .from("information_schema.tables")
+  .select("table_name")
+  .eq("table_schema", "ws_acme")
+  .order("table_name");
+```
+

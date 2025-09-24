@@ -453,7 +453,7 @@ export async function discoverTableMetadata(
  * Lists all available tables and views in allowed schemas
  */
 export async function listAvailableTables(
-  schemaName: string = "public"
+  schemaName: string = "ws_acme"
 ): Promise<DiscoveryResult<string[]>> {
   const cacheKey = `available_tables:${schemaName}`;
   const cached = discoveryCache.get<string[]>(cacheKey);
